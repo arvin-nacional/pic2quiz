@@ -28,8 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Copy } from "lucide-react";
-import { Skeleton } from "../ui/skeleton";
 
 const Editor = dynamic(() => import("@/components/editor"), {
   ssr: false,
@@ -91,8 +89,8 @@ const ImageToText = () => {
     const newImages: { name: string; url: string }[] = [];
 
     Array.from(files).forEach((file) => {
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`${file.name} exceeds the 10MB limit.`);
+      if (file.size > 100 * 1024 * 1024) {
+        alert(`${file.name} exceeds the 100MB limit.`);
         return;
       }
 
