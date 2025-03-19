@@ -294,26 +294,22 @@ const ImageToText = () => {
           </div>
 
           <div>
-            {isPending ? (
-              <Skeleton className="w-[500px] h-[600px]" />
-            ) : (
-              <FormField
-                control={form.control}
-                name="question"
-                render={({ field }) => (
-                  <FormItem className="flex w-full flex-col gap-3">
-                    <FormControl className="mt-3.5 w-[500px] ">
-                      <Editor
-                        value={field.value}
-                        editorRef={editorRef}
-                        fieldChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="question"
+              render={({ field }) => (
+                <FormItem className="flex w-full flex-col gap-3">
+                  <FormControl className="mt-3.5 w-[500px] ">
+                    <Editor
+                      value={field.value}
+                      editorRef={editorRef}
+                      fieldChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* {editorRef.current && (
               <Button
