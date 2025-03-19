@@ -7,8 +7,8 @@ export const ImageSchema = z.object({
       url: z.string(),
     })
   ),
-  numberOfQuestions: z.string(),
-  questionType: z.string(),
-  difficulty: z.string(),
+  numberOfQuestions: z.string().min(1),
+  questionType: z.string().min(1),
+  difficulty: z.string().min(1),
   question: z.string(),
 });

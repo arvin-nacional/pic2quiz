@@ -7,11 +7,6 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "100mb",
     },
   },
-  api: {
-    bodyParser: {
-      sizeLimit: "100mb", // Adjust size limit as needed
-    },
-  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "*" },

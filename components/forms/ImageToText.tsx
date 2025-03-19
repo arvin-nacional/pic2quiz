@@ -52,6 +52,7 @@ const ImageToText = () => {
   async function onSubmit(data: any) {
     startTransition(async () => {
       try {
+        console.log(data.images);
         const worker = await createWorker("eng");
         const texts = await Promise.all(
           data.images.map(async (image: { url: string }) => {
@@ -82,28 +83,58 @@ const ImageToText = () => {
       }
     });
   }
-  const handleImageChange = (
+  const handleImageChange = async (
     files: FileList,
     onChange: (value: any) => void
   ) => {
-    const newImages: { name: string; url: string }[] = [];
+    const uploadedImages: { name: string; url: string }[] = [];
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
       if (file.size > 100 * 1024 * 1024) {
         alert(`${file.name} exceeds the 100MB limit.`);
-        return;
+        continue;
       }
 
       const reader = new FileReader();
-      reader.onload = () => {
-        newImages.push({ name: file.name, url: reader.result as string });
-        if (newImages.length === files.length) {
-          setPreviews((prev) => [...prev, ...newImages]);
-          onChange([...form.getValues("images"), ...newImages]);
-        }
-      };
       reader.readAsDataURL(file);
-    });
+
+      const uploadPromise = new Promise<{ name: string; url: string }>(
+        (resolve, reject) => {
+          reader.onload = async () => {
+            try {
+              const response = await fetch("/api/cloudinary", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  images: [{ src: reader.result, alt: file.name }],
+                }),
+              });
+
+              const result = await response.json();
+              if (result.success) {
+                resolve({ name: file.name, url: result.data[0].src });
+              } else {
+                reject(new Error("Image upload failed"));
+              }
+            } catch (error) {
+              reject(error);
+            }
+          };
+        }
+      );
+
+      try {
+        const uploadedImage = await uploadPromise;
+        uploadedImages.push(uploadedImage);
+      } catch (error) {
+        console.error("Upload error:", error);
+      }
+    }
+
+    if (uploadedImages.length) {
+      setPreviews((prev) => [...prev, ...uploadedImages]);
+      onChange([...form.getValues("images"), ...uploadedImages]);
+    }
   };
 
   const refreshPage = (e: React.MouseEvent<HTMLButtonElement>) => {
