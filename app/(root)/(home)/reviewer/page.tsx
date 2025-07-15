@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useTransition, useState, useRef } from "react";
 import { MDXEditorMethods } from "@mdxeditor/editor";
 import { useForm } from "react-hook-form";
@@ -6,8 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
-
 import { createWorker } from "tesseract.js";
+
 import {
   Form,
   FormControl,
@@ -16,44 +17,59 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from "../ui/form";
+} from "@/components/ui/form";
 
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { ImageSchema } from "@/lib/validations";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "@/components/ui/select";
 
 const Editor = dynamic(() => import("@/components/editor"), {
   ssr: false,
 });
-const ImageToText = () => {
-  const [isPending, startTransition] = useTransition();
 
+// Define reviewer schema
+const ReviewerSchema = z.object({
+  images: z.array(
+    z.object({
+      name: z.string(),
+      url: z.string(),
+    })
+  ),
+  detailLevel: z.string().min(1),
+  format: z.string().min(1),
+  language: z.string().min(1),
+  content: z.string(),
+});
+
+export default function ReviewerPage() {
+  const [isPending, startTransition] = useTransition();
   const editorRef = useRef<MDXEditorMethods>(null);
-  const form = useForm<z.infer<typeof ImageSchema>>({
-    resolver: zodResolver(ImageSchema),
+  const [previews, setPreviews] = useState<{ name: string; url: string }[]>([]);
+
+  const form = useForm<z.infer<typeof ReviewerSchema>>({
+    resolver: zodResolver(ReviewerSchema),
     defaultValues: {
       images: [],
-      numberOfQuestions: "",
-      questionType: "",
-      difficulty: "",
-      question: "",
+      detailLevel: "",
+      format: "",
+      language: "english",
+      content: "",
     },
   });
-
-  const [previews, setPreviews] = useState<{ name: string; url: string }[]>([]);
 
   async function onSubmit(data: any) {
     startTransition(async () => {
       try {
-        console.log(data.images);
-        const worker = await createWorker("eng");
+        // Use Tesseract.js to extract text from images
+        const worker = await createWorker(
+          data.language === "filipino" ? "fil" : "eng"
+        );
         const texts = await Promise.all(
           data.images.map(async (image: { url: string }) => {
             const { data } = await worker.recognize(image.url);
@@ -61,28 +77,47 @@ const ImageToText = () => {
           })
         );
 
-        const response = await fetch("/api/ai/imageToText", {
+        // Send the extracted text to the API to generate reviewer content
+        const response = await fetch("/api/ai/imageToReviewer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: texts.join(" "), ...data }),
+          body: JSON.stringify({
+            content: texts.join(" "),
+            detailLevel: data.detailLevel,
+            format: data.format,
+            language: data.language,
+          }),
         });
 
-        const rawQuestions = await response.json();
-        const formattedAnswer = rawQuestions.data.replace(/<br>/g, " ").trim();
+        const result = await response.json();
+        
+        // Sanitize the markdown content to remove problematic elements
+        let formattedContent = result.data.replace(/<br>/g, " ");
+        
+        // Remove thematic breaks (horizontal rules like ---) which cause parsing errors
+        formattedContent = formattedContent.replace(/^(---|___|\*\*\*)(\s*)$/gm, "");
+        
+        // Additional sanitization for other potentially problematic markdown
+        formattedContent = formattedContent.trim();
 
         if (editorRef.current) {
-          editorRef.current.setMarkdown(formattedAnswer);
-          form.setValue("question", formattedAnswer);
-          form.trigger("question");
+          editorRef.current.setMarkdown(formattedContent);
+          form.setValue("content", formattedContent);
+          form.trigger("content");
         }
+
         toast("Successful Generation", {
-          description: `Successfully generated ${data.numberOfQuestions} questions`,
+          description: `Successfully generated reviewer content`,
         });
       } catch (error) {
         console.error(error);
+        toast("Error", {
+          description: "Failed to generate reviewer content. Please try again.",
+        });
       }
     });
   }
+
   const handleImageChange = async (
     files: FileList,
     onChange: (value: any) => void
@@ -142,18 +177,24 @@ const ImageToText = () => {
     window.location.reload();
     form.reset({
       images: [],
-      numberOfQuestions: "",
-      questionType: "",
-      difficulty: "",
-      question: "",
+      detailLevel: "",
+      format: "",
+      language: "english",
+      content: "",
     });
     setPreviews([]);
   };
+
   return (
-    <div>
+    <div className="container mx-auto p-12">
+      <h1 className="text-2xl font-bold mb-6">Image to Reviewer</h1>
+      <p className="text-gray-600 mb-6">
+        Upload images to generate reviewer content with customizable options
+      </p>
+
       <Form {...form}>
         <form className="flex gap-5" onSubmit={form.handleSubmit(onSubmit)}>
-          <div className="flex flex-col gap-5  rounded-xl px-5 w-[500px]">
+          <div className="flex flex-col gap-5 rounded-xl px-5 w-[500px]">
             <FormField
               control={form.control}
               name="images"
@@ -199,13 +240,12 @@ const ImageToText = () => {
             />
             <FormField
               control={form.control}
-              name="numberOfQuestions"
+              name="detailLevel"
               render={({ field }) => (
                 <>
                   <FormItem>
                     <FormLabel className="paragraph-semibold">
-                      Number of Questions{" "}
-                      <span className="text-primary-500">*</span>
+                      Detail Level <span className="text-primary-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Select
@@ -214,53 +254,22 @@ const ImageToText = () => {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select number of questions" />
+                            <SelectValue placeholder="Select detail level" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="10">10</SelectItem>
-                          <SelectItem value="20">20</SelectItem>
-                          <SelectItem value="30">30</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    {/* <FormDescription className="body-regular mt-2.5 text-light-500">
-                    Select Number of Questions
-                  </FormDescription> */}
-                    <FormMessage className="text-red-500" />
-                  </FormItem>
-                </>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="difficulty"
-              render={({ field }) => (
-                <>
-                  <FormItem>
-                    <FormLabel className="paragraph-semibold">
-                      Difficulty <span className="text-primary-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder=" Select difficulty level" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="easy">Easy</SelectItem>
+                          <SelectItem value="very-detailed">
+                            Very Detailed
+                          </SelectItem>
+                          <SelectItem value="thorough">Thorough</SelectItem>
                           <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="hard">Hard</SelectItem>
+                          <SelectItem value="main-ideas">
+                            Main Ideas Only
+                          </SelectItem>
+                          <SelectItem value="concise">Concise</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
-                    {/* <FormDescription className="body-regular mt-2.5 text-light-500">
-                    Select difficulty level
-                  </FormDescription> */}
                     <FormMessage className="text-red-500" />
                   </FormItem>
                 </>
@@ -268,13 +277,12 @@ const ImageToText = () => {
             />
             <FormField
               control={form.control}
-              name="questionType"
+              name="format"
               render={({ field }) => (
                 <>
                   <FormItem>
                     <FormLabel className="paragraph-semibold">
-                      Type of Questions{" "}
-                      <span className="text-primary-500">*</span>
+                      Format <span className="text-primary-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Select
@@ -283,26 +291,24 @@ const ImageToText = () => {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder=" Select qustion type" />
+                            <SelectValue placeholder="Select format" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="multiple-choice">
-                            Multiple Choice
+                          <SelectItem value="bullet-points">
+                            Bullet Points
                           </SelectItem>
-                          <SelectItem value="identification">
-                            Identification
+                          <SelectItem value="paragraphs">Paragraphs</SelectItem>
+                          <SelectItem value="flashcards">Flashcards</SelectItem>
+                          <SelectItem value="mind-map">
+                            Mind Map Structure
                           </SelectItem>
-                          <SelectItem value="true-or-false">
-                            True or False
+                          <SelectItem value="summary">
+                            Executive Summary
                           </SelectItem>
-                          <SelectItem value="matching">Matching</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>
-                    {/* <FormDescription className="body-regular mt-2.5 text-light-500">
-                    Select qustion type
-                  </FormDescription> */}
                     <FormMessage className="text-red-500" />
                   </FormItem>
                 </>
@@ -324,7 +330,7 @@ const ImageToText = () => {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder=" Select language" />
+                            <SelectValue placeholder="Select language" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -333,9 +339,6 @@ const ImageToText = () => {
                         </SelectContent>
                       </Select>
                     </FormControl>
-                    {/* <FormDescription className="body-regular mt-2.5 text-light-500">
-                    Select qustion type
-                  </FormDescription> */}
                     <FormMessage className="text-red-500" />
                   </FormItem>
                 </>
@@ -346,7 +349,7 @@ const ImageToText = () => {
               className="w-fit rounded-3xl px-10 bg-blue-950 !text-light-900 mt-2 cursor-pointer"
               disabled={isPending}
             >
-              {isPending ? "Generating" : "Generate AI Questions"}
+              {isPending ? "Generating" : "Generate Reviewer"}
             </Button>
             <Button
               className="w-fit rounded-3xl bg-blue-500 hover:bg-blue-600 px-10 !text-light-900 mt-2 cursor-pointer"
@@ -359,7 +362,7 @@ const ImageToText = () => {
           <div>
             <FormField
               control={form.control}
-              name="question"
+              name="content"
               render={({ field }) => (
                 <FormItem className="flex w-full flex-col gap-3">
                   <FormControl className="mt-3.5 w-[500px] ">
@@ -373,26 +376,9 @@ const ImageToText = () => {
                 </FormItem>
               )}
             />
-
-            {/* {editorRef.current && (
-              <Button
-                onClick={() => {
-                  navigator.clipboard.writeText(form.getValues("question"));
-
-                  toast("Coppied to clipboard", {
-                    description: "Question has been successfully copied",
-                  });
-                }}
-                className="mt-3 px-4 py-2 text-primary-400  small-regular border border-primary-500 rounded-lg  text-white cursor-pointer"
-              >
-                <Copy /> Copy Questions
-              </Button>
-            )} */}
           </div>
         </form>
       </Form>
     </div>
   );
-};
-
-export default ImageToText;
+}

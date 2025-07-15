@@ -11,4 +11,5 @@ export const ImageSchema = z.object({
   questionType: z.string().min(1),
   difficulty: z.string().min(1),
   question: z.string(),
+  language: z.string().min(1),
 });
