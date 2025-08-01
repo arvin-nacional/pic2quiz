@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { createWorker } from "tesseract.js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function ImageToTextPage() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -28,7 +30,10 @@ export default function ImageToTextPage() {
       reader.onload = async () => {
         try {
           // For local preview, we can just use the data URL
-          uploadedImages.push({ name: file.name, url: reader.result as string });
+          uploadedImages.push({
+            name: file.name,
+            url: reader.result as string,
+          });
           setPreviews([...previews, ...uploadedImages]);
         } catch (error) {
           console.error("Error loading image:", error);
@@ -84,42 +89,49 @@ export default function ImageToTextPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl">
+    <div className="container mx-auto py-8 max-w-6xl">
       <h1 className="text-2xl font-bold mb-6">Image to Text Converter</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-lg font-medium">Upload Images</label>
-            <Input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => {
-                if (e.target.files) {
-                  handleImageChange(e.target.files);
-                }
-              }}
-              className="w-full p-2 border rounded"
-            />
-            <p className="text-sm text-gray-500">Maximum file size: 10MB</p>
-          </div>
 
-          {previews.length > 0 && (
-            <div>
-              <p className="font-medium mb-2">Image Previews:</p>
-              <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-[300px]">
-                {previews.map((image, index) => (
-                  <img
-                    key={index}
-                    src={image.url}
-                    alt={image.name}
-                    className="h-24 w-full object-cover rounded"
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Input Section */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upload Images</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  if (e.target.files) {
+                    handleImageChange(e.target.files);
+                  }
+                }}
+                className="w-full p-2 border rounded"
+              />
+              <p className="text-sm text-gray-500">
+                Maximum file size: 10MB per image
+              </p>
+
+              {previews.length > 0 && (
+                <div>
+                  <p className="font-medium mb-2">Image Previews:</p>
+                  <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-[300px]">
+                    {previews.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image.url}
+                        alt={image.name}
+                        className="h-24 w-full object-cover rounded"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <div className="flex flex-wrap gap-3">
             <Button
@@ -127,7 +139,7 @@ export default function ImageToTextPage() {
               disabled={isProcessing || previews.length === 0}
               className="bg-blue-950 hover:bg-blue-900"
             >
-              {isProcessing ? "Processing..." : "Extract Text"}
+              {isProcessing ? "Extracting Text..." : "Extract Text"}
             </Button>
             <Button
               onClick={resetForm}
@@ -139,28 +151,33 @@ export default function ImageToTextPage() {
           </div>
         </div>
 
+        {/* Output Section */}
         <div className="space-y-4">
-          <div>
-            <label className="text-lg font-medium">Extracted Text</label>
-            <div className="relative">
-              <textarea
-                value={extractedText}
-                onChange={(e) => setExtractedText(e.target.value)}
-                className="w-full h-[300px] p-3 border rounded resize-none bg-gray-50 dark:bg-gray-800"
-                placeholder="Extracted text will appear here..."
-                readOnly={isProcessing}
-              />
-              {extractedText && (
-                <Button
-                  onClick={copyToClipboard}
-                  className="absolute top-2 right-2 bg-blue-500 hover:bg-blue-600 p-2 h-8"
-                  size="sm"
-                >
-                  Copy
-                </Button>
-              )}
-            </div>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Extracted Text</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="relative">
+                <Textarea
+                  value={extractedText}
+                  onChange={(e) => setExtractedText(e.target.value)}
+                  className="min-h-[500px] resize-none bg-gray-50 dark:bg-gray-800"
+                  placeholder="Extracted text will appear here..."
+                  readOnly={isProcessing}
+                />
+                {extractedText && (
+                  <Button
+                    onClick={copyToClipboard}
+                    className="absolute top-2 right-2 bg-blue-500 hover:bg-blue-600 p-2 h-8"
+                    size="sm"
+                  >
+                    Copy
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
