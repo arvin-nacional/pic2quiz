@@ -23,6 +23,7 @@ export default function ImageToQuizPage() {
   const [questionType, setQuestionType] = useState("multiple-choice");
   const [difficulty, setDifficulty] = useState("medium");
   const [language, setLanguage] = useState("English");
+  const [instruction, setInstruction] = useState("");
 
   const handleImageChange = async (files: FileList) => {
     if (!files || files.length === 0) return;
@@ -88,6 +89,7 @@ export default function ImageToQuizPage() {
           questionType,
           difficulty,
           language,
+          instruction,
         }),
       });
 
@@ -128,6 +130,7 @@ export default function ImageToQuizPage() {
     setQuestionType("multiple-choice");
     setDifficulty("medium");
     setLanguage("English");
+    setInstruction("");
   };
 
   return (
@@ -198,6 +201,12 @@ export default function ImageToQuizPage() {
                       <SelectItem value="10">10 Questions</SelectItem>
                       <SelectItem value="15">15 Questions</SelectItem>
                       <SelectItem value="20">20 Questions</SelectItem>
+                      <SelectItem value="25">25 Questions</SelectItem>
+                      <SelectItem value="30">30 Questions</SelectItem>
+                      <SelectItem value="35">35 Questions</SelectItem>
+                      <SelectItem value="40">40 Questions</SelectItem>
+                      <SelectItem value="45">45 Questions</SelectItem>
+                      <SelectItem value="50">50 Questions</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -250,6 +259,18 @@ export default function ImageToQuizPage() {
                       <SelectItem value="Filipino">Filipino</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Additional Instructions (Optional)
+                  </label>
+                  <Textarea
+                    value={instruction}
+                    onChange={(e) => setInstruction(e.target.value)}
+                    placeholder="Add specific instructions for quiz generation (e.g., focus on key concepts, include formulas, etc.)"
+                    className="min-h-[80px] resize-none"
+                  />
                 </div>
               </div>
             </CardContent>

@@ -8,25 +8,43 @@ export async function POST(req: Request) {
   try {
     // Configure detail level prompts
     const detailLevelPrompts = {
-      'very-detailed': 'Create an extremely detailed and comprehensive reviewer that covers all aspects of the content with thorough explanations and examples',
-      'thorough': 'Create a thorough reviewer that covers important concepts in detail with clear explanations',
-      'medium': 'Create a balanced reviewer with moderate detail, focusing on key concepts and supporting points',
-      'main-ideas': 'Focus only on the main ideas and core concepts, ignoring minor details',
-      'concise': 'Create a concise, minimalist reviewer that captures only the absolute essential information'
+      "very-detailed":
+        "Create an extremely detailed and comprehensive reviewer that covers all aspects of the content with thorough explanations and examples",
+      thorough:
+        "Create a thorough reviewer that covers important concepts in detail with clear explanations",
+      medium:
+        "Create a balanced reviewer with moderate detail, focusing on key concepts and supporting points",
+      "main-ideas":
+        "Focus only on the main ideas and core concepts, ignoring minor details",
+      concise:
+        "Create a concise, minimalist reviewer that captures only the absolute essential information",
     };
 
     // Configure format prompts
     const formatPrompts = {
-      'bullet-points': 'Format the content as organized bullet points with clear hierarchical structure',
-      'paragraphs': 'Format the content as well-structured paragraphs with clear transitions',
-      'flashcards': 'Format the content as question/answer pairs suitable for flashcard studying',
-      'mind-map': 'Format the content in a hierarchical structure similar to a mind map, with main concepts and supporting details',
-      'summary': 'Format the content as a concise executive summary of the most important information'
+      "bullet-points":
+        "Format the content as organized bullet points with clear hierarchical structure",
+      paragraphs:
+        "Format the content as well-structured paragraphs with clear transitions",
+      flashcards:
+        "Format the content as question/answer pairs suitable for flashcard studying",
+      "mind-map":
+        "Format the content in a hierarchical structure similar to a mind map, with main concepts and supporting details",
+      summary:
+        "Format the content as a concise executive summary of the most important information",
+      "terms-table": `Format the content as a simple two-column table with the following structure:
+      **Term** | **Definition / Example**
+      - Each row should contain a term in the first column, and its definition (plus example if applicable) in the second column
+      - Keep the formatting in clean markdown table format`,
     };
 
-    const selectedDetailLevel = detailLevelPrompts[detailLevel as keyof typeof detailLevelPrompts] || detailLevelPrompts['medium'];
-    const selectedFormat = formatPrompts[format as keyof typeof formatPrompts] || formatPrompts['bullet-points'];
-    
+    const selectedDetailLevel =
+      detailLevelPrompts[detailLevel as keyof typeof detailLevelPrompts] ||
+      detailLevelPrompts["medium"];
+    const selectedFormat =
+      formatPrompts[format as keyof typeof formatPrompts] ||
+      formatPrompts["bullet-points"];
+
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
       prompt: `${content}`,
@@ -46,12 +64,15 @@ IMPORTANT FORMATTING INSTRUCTIONS:
 - DO NOT use HTML tags
 - Use headings (# Title), bold (**text**), and italic (*text*) for formatting
 - For lists, use proper markdown format with a space after the bullet point (- Item) or number (1. Item)
-- Keep table formatting simple if needed`,
+- For tables, use simple markdown tables with | separators`,
     });
 
     return NextResponse.json({ success: true, data: text }, { status: 200 });
   } catch (error) {
     console.log(error);
-    return NextResponse.json({ success: false, error: "Failed to generate reviewer content" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Failed to generate reviewer content" },
+      { status: 500 }
+    );
   }
 }
